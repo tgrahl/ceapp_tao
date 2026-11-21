@@ -1,0 +1,65 @@
+# Local test stack: the same image as in Azure, plus MySQL 8.0 on the same machine.
+# See docs/local-testing.md.
+#
+#   docker compose up -d --build          # build image, start web + db
+#   docker compose run --rm install       # one-time TAO install
+#   open http://localhost:8080            # admin / admin
+#
+# Newer TAO:  PHP_VERSION=8.3 TAO_COMMUNITY_VERSION=2026.11 TAO_EXTENSIONS=taoCe,taoMediaManager
+services:
+  tao:
+    build:
+      context: ./docker
+      args:
+        PHP_VERSION: ${PHP_VERSION:-8.1}
+        TAO_COMMUNITY_VERSION: ${TAO_COMMUNITY_VERSION:-}
+    image: tao-azure:local
+    ports: [ "8080:8080" ]
+    volumes:
+      - tao_config:/var/www/html/config
+      - tao_data:/var/www/html/data
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+  install:
+    image: tao-azure:local
+    profiles: [ install ]
+    command: [ "/usr/local/bin/tao-install.sh" ]
+    environment:
+      TAO_DB_HOST: db
+      TAO_DB_NAME: tao
+      TAO_DB_USER: tao
+      TAO_DB_PASSWORD: tao
+      TAO_URL: http://localhost:8080
+      TAO_ADMIN_USER: admin
+      TAO_ADMIN_PASSWORD: admin
+      TAO_EXTENSIONS: ${TAO_EXTENSIONS:-taoCe}
+    volumes:
+      - tao_config:/var/www/html/config
+      - tao_data:/var/www/html/data
+    depends_on:
+      db: { condition: service_healthy }
+
+  db:
+    image: mysql:8.0
+    command: [ "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci" ]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tao
+      MYSQL_USER: tao
+      MYSQL_PASSWORD: tao
+    volumes:
+      - tao_db:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysql", "-h127.0.0.1", "-utao", "-ptao", "-e", "SELECT 1", "tao" ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  tao_config:
+  tao_data:
+  tao_db:
