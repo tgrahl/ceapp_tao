@@ -3,7 +3,7 @@
 #
 # Required:  MYSQL_ADMIN_PASSWORD, TAO_ADMIN_PASSWORD
 # Optional:  RG (rg-tao), LOCATION (westeurope), PREFIX (tao), ACR (derived),
-#            IMAGE_TAG (timestamp), MAX_REPLICAS (3)
+#            IMAGE_TAG (timestamp), MAX_REPLICAS (3), MYSQL_SKU (Standard_B1s)
 #            PHP_VERSION (8.1) + TAO_COMMUNITY_VERSION (empty = package-tao composer.lock, TAO 2022.11.6)
 #            e.g. PHP_VERSION=8.3 TAO_COMMUNITY_VERSION=2026.11 for the current LTS
 #            TAO_EXTENSIONS (taoCe; taoCe,taoMediaManager when TAO_COMMUNITY_VERSION is set)
@@ -24,6 +24,7 @@ TAO_COMMUNITY_VERSION="${TAO_COMMUNITY_VERSION:-}"
 if [ -n "$TAO_COMMUNITY_VERSION" ]; then DEFAULT_EXT="taoCe,taoMediaManager"; else DEFAULT_EXT="taoCe"; fi
 TAO_EXTENSIONS="${TAO_EXTENSIONS:-$DEFAULT_EXT}"
 MAX_REPLICAS="${MAX_REPLICAS:-3}"
+MYSQL_SKU="${MYSQL_SKU:-Standard_B1s}"
 
 SUB_ID="$(az account show --query id -o tsv)"
 ACR="${ACR:-${PREFIX}acr$(printf '%s' "${SUB_ID}/${RG}" | sha1sum | cut -c1-10)}"
@@ -51,7 +52,7 @@ az acr build -r "$ACR" -t "tao:${IMAGE_TAG}" -t "tao:latest" \
 
 echo "==> Deploying infrastructure"
 az deployment group create -g "$RG" -n tao -f infra/main.bicep -o none \
-  -p prefix="$PREFIX" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" \
+  -p prefix="$PREFIX" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" \
      mysqlAdminPassword="$MYSQL_ADMIN_PASSWORD" taoAdminPassword="$TAO_ADMIN_PASSWORD"
 
 out() { az deployment group show -g "$RG" -n tao --query "properties.outputs.$1.value" -o tsv; }

@@ -54,8 +54,8 @@ param cpu string = '1.0'
 @allowed([ '1Gi', '2Gi', '3Gi', '4Gi' ])
 param memory string = '2Gi'
 
-@description('MySQL compute SKU. Burstable B1ms is the cheapest option.')
-param mysqlSku string = 'Standard_B1ms'
+@description('MySQL compute SKU. Standard_B1s (1 vCore, 1 GiB, ~85 connections) is the smallest; use Standard_B1ms (2 GiB, ~171 connections) if the database runs short of memory or connections.')
+param mysqlSku string = 'Standard_B1s'
 
 @allowed([ 'Burstable', 'GeneralPurpose', 'MemoryOptimized' ])
 param mysqlTier string = 'Burstable'

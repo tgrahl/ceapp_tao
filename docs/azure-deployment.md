@@ -8,7 +8,7 @@ Internet ───────────────► Container App  tao-app
                             nginx + php-fpm
                             ├─ Azure Files  tao-config → /var/www/html/config
                             ├─ Azure Files  tao-data   → /var/www/html/data   (+ PHP sessions)
-                            └─ VNet (private) ──► MySQL Flexible Server 8.0 (B1ms, no public access)
+                            └─ VNet (private) ──► MySQL Flexible Server 8.0 (B1s, always on, private)
 
 Container Apps Job  tao-install  (manual, runs once) ── same image, runs taoInstall.php
 ```
@@ -19,7 +19,7 @@ Container Apps Job  tao-install  (manual, runs once) ── same image, runs tao
 | Container Apps environment + app `tao-app` | Runs TAO with `minReplicas: 0`: no cost while idle, starts on the first request. |
 | Container Apps job `tao-install` | One-time CLI install into the shared storage and database. |
 | Storage account, file shares `tao-config` and `tao-data` | TAO writes its config and all content (items, tests, media, results) to disk. These must survive scale-to-zero and be shared between replicas. PHP sessions live here too, so users stay logged in. |
-| MySQL Flexible Server (Burstable B1ms) | The database. Reachable only inside the VNet. |
+| MySQL Flexible Server (Burstable B1s, the smallest size) | The database. Always on, reachable only inside the VNet. |
 | VNet, private DNS zone, managed identity, Log Analytics | Private networking, registry pull without passwords, logs. |
 
 Everything is defined in [`infra/main.bicep`](../infra/main.bicep).
@@ -78,6 +78,7 @@ Optional variables, set them in front of the command:
 | `MAX_REPLICAS` | `3` | Upper limit for autoscaling |
 | `TAO_EXTENSIONS` | `taoCe` (`taoCe,taoMediaManager` when a version is set) | Extensions to install |
 | `IMAGE_TAG` | timestamp | Image tag in the registry |
+| `MYSQL_SKU` | `Standard_B1s` | Database size (see below) |
 
 The script takes about 20–30 minutes in total. It:
 1. Registers the required resource providers, then creates the resource group and the registry.
@@ -102,6 +103,28 @@ Open the printed URL (`https://tao-app.<random>.<region>.azurecontainerapps.io`)
 | `cpu` / `memory` | `1.0` / `2Gi` | Size of each replica. |
 
 To change a setting, edit the parameter default in `infra/main.bicep` and re-run `deploy.sh`.
+
+### Database size
+
+The database runs all the time on the smallest size, **Burstable B1s** (1 vCore, 1 GiB RAM). Only the app
+scales. B1s allows about 85 connections by default. At full scale the app runs at most
+`maxReplicas` × 16 PHP workers (3 × 16 = 48). That fits if each worker holds one connection, but how many
+TAO opens per request hasn't been tested.
+
+Move to **B1ms** (2 GiB, ~171 connections, roughly twice the price) if you see any of these:
+* `Too many connections` errors in the app logs;
+* slow pages while the database CPU or memory sits near 100% (Azure portal → MySQL server → Monitoring);
+* more than ~50 candidates taking a test at the same time.
+
+Resize in place (the server restarts, about a minute of downtime):
+
+```bash
+az mysql flexible-server update -g rg-tao -n <mysql-name> --sku-name Standard_B1ms --tier Burstable
+```
+
+Re-run `deploy.sh` afterwards with `MYSQL_SKU=Standard_B1ms`; otherwise it sets the size back to B1s.
+
+### Pre-warming
 
 **Before a scheduled exam,** keep one replica warm so the first candidates don't hit a cold start:
 
@@ -162,7 +185,8 @@ Show the logs of one run:
 az containerapp job logs show -g rg-tao -n tao-install --execution <execution-name> --container install
 ```
 
-Stop the database during long breaks (Azure starts it again automatically after 30 days):
+The database is meant to run all the time. For long breaks (e.g. summer) you can still stop it by hand.
+Azure starts it again automatically after 30 days:
 
 ```bash
 az mysql flexible-server stop -g rg-tao -n <mysql-name>
