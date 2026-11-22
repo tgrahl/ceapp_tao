@@ -69,6 +69,9 @@ RUN rm -rf /var/www/html/* \
  && mkdir -p config data \
  && chown -R www-data:www-data /var/www/html
 
+# The official PHP image ships no php.ini, so PHP's built-in defaults apply (display_errors=On).
+# Start from PHP's production settings; docker/php.ini (zz-tao.ini) overrides on top.
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY php.ini       /usr/local/etc/php/conf.d/zz-tao.ini
 COPY php-fpm.conf  /usr/local/etc/php-fpm.d/zz-tao.conf
 COPY nginx.conf    /etc/nginx/sites-available/default
