@@ -40,6 +40,9 @@ param taoExtensions string = 'taoCe'
 @description('Show the "Guest access" link on the login page and allow anonymous guest deliveries. Applied by the install job on every deployment.')
 param taoGuestAccess bool = false
 
+@description('One-off recovery: set the TAO admin user\'s password to taoAdminPassword during this deployment. TAO otherwise uses taoAdminPassword only at install time.')
+param resetAdminPassword bool = false
+
 @description('TAO log level written to the container output (Container Apps console logs). Applied by the install job on every deployment.')
 @allowed([ 'debug', 'info', 'notice', 'warning', 'error', 'critical' ])
 param taoLogLevel string = 'warning'
@@ -401,6 +404,7 @@ resource installJob 'Microsoft.App/jobs@2025-01-01' = {
             { name: 'TAO_EXTENSIONS', value: taoExtensions }
             { name: 'TAO_GUEST_ACCESS', value: taoGuestAccess ? 'on' : 'off' }
             { name: 'TAO_LOG_LEVEL', value: taoLogLevel }
+            { name: 'TAO_RESET_ADMIN_PASSWORD', value: resetAdminPassword ? 'yes' : 'no' }
           ]
         }
       ]

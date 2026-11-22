@@ -73,7 +73,7 @@ COPY php.ini       /usr/local/etc/php/conf.d/zz-tao.ini
 COPY php-fpm.conf  /usr/local/etc/php-fpm.d/zz-tao.conf
 COPY nginx.conf    /etc/nginx/sites-available/default
 COPY supervisord.conf /etc/supervisor/conf.d/tao.conf
-COPY entrypoint.sh tao-install.sh /usr/local/bin/
+COPY entrypoint.sh tao-install.sh tao-sync-db-config.php tao-reset-admin-password.php /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/tao-install.sh \
  && ln -sf /dev/stdout /var/log/nginx/access.log \
  && ln -sf /dev/stderr /var/log/nginx/error.log

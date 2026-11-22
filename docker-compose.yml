@@ -37,6 +37,7 @@ services:
       TAO_EXTENSIONS: ${TAO_EXTENSIONS:-taoCe}
       TAO_GUEST_ACCESS: ${TAO_GUEST_ACCESS:-off}
       TAO_LOG_LEVEL: ${TAO_LOG_LEVEL:-warning}
+      TAO_RESET_ADMIN_PASSWORD: ${RESET_ADMIN_PASSWORD:-no}
     volumes:
       - tao_config:/var/www/html/config
       - tao_data:/var/www/html/data

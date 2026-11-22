@@ -44,14 +44,26 @@ Everything is defined in [`infra/main.bicep`](../infra/main.bicep).
 az bicep build -f infra/main.bicep --stdout > /dev/null && echo OK
 ```
 
-## Step 2: Choose passwords
+## Step 2: Create the passwords (once)
+
+This creates random passwords in `~/tao-secrets.env` **only if that file doesn't exist yet**, so running
+it again never replaces them. Keep the file. In Azure Cloud Shell your home folder persists between
+sessions.
 
 ```bash
-export MYSQL_ADMIN_PASSWORD='<8-128 chars, at least 3 of: upper, lower, digit, symbol>'
+[ -f ~/tao-secrets.env ] || { printf 'export MYSQL_ADMIN_PASSWORD=%q\nexport TAO_ADMIN_PASSWORD=%q\n' "$(openssl rand -base64 24 | tr -d '/+=')Aa1-" "$(openssl rand -base64 18 | tr -d '/+=')Aa1-" > ~/tao-secrets.env && chmod 600 ~/tao-secrets.env; }
 ```
 
+Load them in every new shell before deploying:
+
 ```bash
-export TAO_ADMIN_PASSWORD='<password for the TAO admin user>'
+source ~/tao-secrets.env
+```
+
+Show the TAO admin password:
+
+```bash
+echo "$TAO_ADMIN_PASSWORD"
 ```
 
 ## Step 3: Deploy
@@ -79,6 +91,7 @@ Optional variables, set them in front of the command:
 | `TAO_EXTENSIONS` | `taoCe` (`taoCe,taoMediaManager` when a version is set) | Extensions to install |
 | `IMAGE_TAG` | timestamp | Image tag in the registry. If that tag already exists, the build is skipped. |
 | `MYSQL_SKU` | `Standard_B1ms` | Database size (see below) |
+| `RESET_ADMIN_PASSWORD` | `no` | `yes` sets the TAO admin password to `TAO_ADMIN_PASSWORD` during this deploy (see *Passwords*). |
 | `TAO_LOG_LEVEL` | `warning` | TAO log level in the container output (`debug` … `critical`). Applied on every deploy. |
 | `TAO_GUEST_ACCESS` | `off` | `on` shows the "Guest access" link on the login page, so anyone can take deliveries that allow guests. Applied on every deploy. |
 
@@ -239,6 +252,20 @@ without it (debug is verbose and fills Log Analytics, which is billed per GB).
 
 The install job's own output (install, guest access, log setup): **Container Apps jobs → `tao-install` →
 Execution history → Console logs**, or the `az containerapp job logs show` command under *Operations*.
+
+## Passwords
+
+* **Database password** (`MYSQL_ADMIN_PASSWORD`): every deployment sets the MySQL admin password to this
+  value. The install job then updates TAO's stored copy (`config/generis/persistences.conf.php`) and tests
+  the connection, so changing it is just: change the value, run `deploy.sh`. Without that step, TAO fails
+  with `SQLSTATE[HY000] [1045] Access denied` and shows "Something unexpected happened".
+* **TAO admin password** (`TAO_ADMIN_PASSWORD`): TAO uses it **only at install**; afterwards the password
+  lives in TAO's database, and you can change it in TAO. To set it from the variable again (e.g. after
+  losing it), deploy once with `RESET_ADMIN_PASSWORD=yes`:
+  ```bash
+  RESET_ADMIN_PASSWORD=yes PHP_VERSION=8.3 TAO_COMMUNITY_VERSION=2026.11 ./scripts/deploy.sh
+  ```
+  Don't leave it set, or every deployment resets the password.
 
 ## Login page and guest access
 

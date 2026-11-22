@@ -9,6 +9,7 @@
 #            TAO_EXTENSIONS (taoCe; taoCe,taoMediaManager when TAO_COMMUNITY_VERSION is set)
 #            TAO_GUEST_ACCESS (off; on = show the "Guest access" link on the login page)
 #            TAO_LOG_LEVEL (warning; debug|info|notice|warning|error|critical)
+#            RESET_ADMIN_PASSWORD (no; yes = set the TAO admin password to TAO_ADMIN_PASSWORD now)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -69,7 +70,7 @@ echo "==> Using image tao:${IMAGE_TAG}"
 
 echo "==> Deploying infrastructure"
 az deployment group create -g "$RG" -n tao -f infra/main.bicep -o none \
-  -p prefix="$PREFIX" location="$LOCATION" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" taoGuestAccess="$GUEST_BOOL" taoLogLevel="${TAO_LOG_LEVEL:-warning}" \
+  -p prefix="$PREFIX" location="$LOCATION" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" taoGuestAccess="$GUEST_BOOL" taoLogLevel="${TAO_LOG_LEVEL:-warning}" resetAdminPassword="$( [ "${RESET_ADMIN_PASSWORD:-no}" = yes ] && echo true || echo false )" \
      mysqlAdminPassword="$MYSQL_ADMIN_PASSWORD" taoAdminPassword="$TAO_ADMIN_PASSWORD"
 
 out() { az deployment group show -g "$RG" -n tao --query "properties.outputs.$1.value" -o tsv; }

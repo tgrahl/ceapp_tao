@@ -4,7 +4,9 @@
 #
 # Idempotent:
 #   * installs TAO only if config/generis.conf.php doesn't exist yet on the shared config volume;
-#   * applies the guest-access setting on every run (TAO_GUEST_ACCESS=off|on, default off).
+#   * on every run: syncs TAO's stored DB connection with TAO_DB_* (e.g. after a password change),
+#     writes the log config (TAO_LOG_LEVEL) and applies guest access (TAO_GUEST_ACCESS=off|on);
+#   * TAO_RESET_ADMIN_PASSWORD=yes sets the admin user's password to TAO_ADMIN_PASSWORD.
 set -eu
 
 cd /var/www/html
@@ -35,6 +37,16 @@ else
     -e "${TAO_EXTENSIONS:-taoCe}" -vv
 
   echo "TAO installation finished."
+fi
+
+# Database connection: the installer stores host/user/password once, but every deployment sets the
+# MySQL admin password from MYSQL_ADMIN_PASSWORD. Bring TAO's copy in line, then test it.
+runuser -u www-data -- php /usr/local/bin/tao-sync-db-config.php
+runuser -u www-data -- php /usr/local/bin/tao-sync-db-config.php --check
+
+if [ "${TAO_RESET_ADMIN_PASSWORD:-no}" = "yes" ]; then
+  : "${TAO_ADMIN_PASSWORD:?}"
+  runuser -u www-data -- php /usr/local/bin/tao-reset-admin-password.php
 fi
 
 # Logging: TAO's default config/generis/log.conf.php uses a null logger, so errors behind
