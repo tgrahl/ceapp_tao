@@ -3,7 +3,7 @@
 #
 # Required:  MYSQL_ADMIN_PASSWORD, TAO_ADMIN_PASSWORD
 # Optional:  RG (rg-tao), LOCATION (swedencentral), PREFIX (tao), ACR (derived),
-#            IMAGE_TAG (timestamp), MAX_REPLICAS (3), MYSQL_SKU (Standard_B1s)
+#            IMAGE_TAG (timestamp), MAX_REPLICAS (3), MYSQL_SKU (Standard_B1ms)
 #            PHP_VERSION (8.1) + TAO_COMMUNITY_VERSION (empty = package-tao composer.lock, TAO 2022.11.6)
 #            e.g. PHP_VERSION=8.3 TAO_COMMUNITY_VERSION=2026.11 for the current LTS
 #            TAO_EXTENSIONS (taoCe; taoCe,taoMediaManager when TAO_COMMUNITY_VERSION is set)
@@ -24,7 +24,7 @@ TAO_COMMUNITY_VERSION="${TAO_COMMUNITY_VERSION:-}"
 if [ -n "$TAO_COMMUNITY_VERSION" ]; then DEFAULT_EXT="taoCe,taoMediaManager"; else DEFAULT_EXT="taoCe"; fi
 TAO_EXTENSIONS="${TAO_EXTENSIONS:-$DEFAULT_EXT}"
 MAX_REPLICAS="${MAX_REPLICAS:-3}"
-MYSQL_SKU="${MYSQL_SKU:-Standard_B1s}"
+MYSQL_SKU="${MYSQL_SKU:-Standard_B1ms}"
 
 SUB_ID="$(az account show --query id -o tsv)"
 ACR="${ACR:-${PREFIX}acr$(printf '%s' "${SUB_ID}/${RG}" | sha1sum | cut -c1-10)}"
@@ -49,10 +49,15 @@ if ! az acr show -n "$ACR" -g "$RG" -o none 2>/dev/null; then
   az acr create -n "$ACR" -g "$RG" -l "$LOCATION" --sku Basic -o none
 fi
 
-echo "==> Building image tao:${IMAGE_TAG} in ACR (takes ~10 min)"
-az acr build -r "$ACR" -t "tao:${IMAGE_TAG}" -t "tao:latest" \
-  --build-arg "PHP_VERSION=${PHP_VERSION}" \
-  --build-arg "TAO_COMMUNITY_VERSION=${TAO_COMMUNITY_VERSION}" docker/
+if az acr repository show -n "$ACR" --image "tao:${IMAGE_TAG}" -o none 2>/dev/null; then
+  echo "==> Image tao:${IMAGE_TAG} already exists in ${ACR} – skipping build"
+else
+  echo "==> Building image tao:${IMAGE_TAG} in ACR (takes ~10 min)"
+  az acr build -r "$ACR" -t "tao:${IMAGE_TAG}" -t "tao:latest" \
+    --build-arg "PHP_VERSION=${PHP_VERSION}" \
+    --build-arg "TAO_COMMUNITY_VERSION=${TAO_COMMUNITY_VERSION}" docker/
+fi
+echo "==> Using image tao:${IMAGE_TAG}"
 
 echo "==> Deploying infrastructure"
 az deployment group create -g "$RG" -n tao -f infra/main.bicep -o none \

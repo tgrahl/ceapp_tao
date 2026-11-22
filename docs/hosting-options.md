@@ -7,7 +7,7 @@ region with the [Azure pricing calculator](https://azure.microsoft.com/pricing/c
 
 | Option | Fixed cost / month | Autoscaling | Effort | Good for |
 |---|---|---|---|---|
-| **A. Container Apps + MySQL Flexible Server B1s** (this repo) | ~€15–19 | yes, 0 → N | done | Production, irregular use, exam peaks |
+| **A. Container Apps + MySQL Flexible Server B1ms** (this repo) | ~€20–25 | yes, 0 → N | done | Production, irregular use, exam peaks |
 | **A′. Same, with MySQL stopped between exam periods** | ~€8–10 while stopped | yes | manual or scheduled start/stop | Use only a few weeks per term |
 | **B. One small VM with everything (docker compose)** | ~€17–40 always on; less with auto-shutdown | no | low | Small, steady use; simplest to understand |
 | **C. Container Apps with MySQL in the same container** | ~€8–10 | no (max 1 replica) | medium | Demos only — **not recommended** |
@@ -18,8 +18,8 @@ The app scales 0 → N; the database runs all the time on the smallest size.
 
 | Resource | ~€ / month |
 |---|---|
-| MySQL Flexible Server, Burstable B1s (1 vCore, 1 GiB), always on — default | 6–7 |
-| *(if you move to B1ms, 1 vCore, 2 GiB)* | *(12–15)* |
+| MySQL Flexible Server, Burstable B1ms (1 vCore, 2 GiB), always on — default | 12–15 |
+| *(B1s, 1 GiB, if your region allows it)* | *(6–7)* |
 | MySQL storage, 20 GB | 2–3 |
 | Container Registry, Basic | 5 |
 | Storage account, Azure Files (pay per GB used) | 1–3 |
