@@ -35,6 +35,7 @@ services:
       TAO_ADMIN_USER: admin
       TAO_ADMIN_PASSWORD: admin
       TAO_EXTENSIONS: ${TAO_EXTENSIONS:-taoCe}
+      TAO_GUEST_ACCESS: ${TAO_GUEST_ACCESS:-off}
     volumes:
       - tao_config:/var/www/html/config
       - tao_data:/var/www/html/data

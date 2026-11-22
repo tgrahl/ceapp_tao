@@ -79,6 +79,7 @@ docker compose down -v
 
 | Symptom | Cause / fix |
 |---|---|
+| Login page shows no login form (only a title, maybe a guest link) | `tao/views/locales/en-US/messages.json` is missing (404 in the browser's network tab). The image generates it during the build; rebuild with `docker compose build --no-cache tao`. |
 | Browser redirects to `/tao/install` and gets 404 | TAO isn't installed yet. Run step 2. |
 | `install` fails with `could not find driver` or a connection error | MySQL wasn't ready, or the `db` container crashed. Check `docker compose logs db`. |
 | `install` fails with `non-existent service "taoMediaManager/fileManager"` | TAO ≥ 2026.x: add `TAO_EXTENSIONS=taoCe,taoMediaManager`, then reset and install again. |

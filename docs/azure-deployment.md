@@ -79,6 +79,7 @@ Optional variables, set them in front of the command:
 | `TAO_EXTENSIONS` | `taoCe` (`taoCe,taoMediaManager` when a version is set) | Extensions to install |
 | `IMAGE_TAG` | timestamp | Image tag in the registry. If that tag already exists, the build is skipped. |
 | `MYSQL_SKU` | `Standard_B1ms` | Database size (see below) |
+| `TAO_GUEST_ACCESS` | `off` | `on` shows the "Guest access" link on the login page, so anyone can take deliveries that allow guests. Applied on every deploy. |
 
 The script takes about 20–30 minutes in total. It:
 1. Registers the required resource providers, then creates the resource group and the registry.
@@ -205,6 +206,17 @@ the database and the `tao-data` share, so always back up and restore both togeth
 **Custom domain:** add and bind it to the container app (`az containerapp hostname add` and
 `az containerapp hostname bind`). Then change `ROOT_URL` in `config/generis.conf.php` on the `tao-config`
 share to the new URL.
+
+## Login page and guest access
+
+* **Guest access is off by default.** The install job runs TAO's `ToggleGuestAccess` action on every
+  deployment: it removes the "Guest access" link and revokes anonymous access to the guest page (which
+  then redirects to the login page). To turn it on, re-run `deploy.sh` with `TAO_GUEST_ACCESS=on`.
+* **Translation files are generated when the image is built.** TAO's installer writes
+  `tao/views/locales/<lang>/messages.json` into the code folder. In Azure the install runs in a separate
+  job container, so the web app never got those files, and the login page then shows no login form (only
+  the guest link). The Dockerfile now generates them with TAO's
+  `tao/scripts/tools/GenerateTranslationBundles.php`.
 
 ## Removing everything
 

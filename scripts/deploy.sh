@@ -7,6 +7,7 @@
 #            PHP_VERSION (8.1) + TAO_COMMUNITY_VERSION (empty = package-tao composer.lock, TAO 2022.11.6)
 #            e.g. PHP_VERSION=8.3 TAO_COMMUNITY_VERSION=2026.11 for the current LTS
 #            TAO_EXTENSIONS (taoCe; taoCe,taoMediaManager when TAO_COMMUNITY_VERSION is set)
+#            TAO_GUEST_ACCESS (off; on = show the "Guest access" link on the login page)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -23,6 +24,7 @@ TAO_COMMUNITY_VERSION="${TAO_COMMUNITY_VERSION:-}"
 # Newer TAO releases wire taoItems to a taoMediaManager service, but taoCe doesn't install it.
 if [ -n "$TAO_COMMUNITY_VERSION" ]; then DEFAULT_EXT="taoCe,taoMediaManager"; else DEFAULT_EXT="taoCe"; fi
 TAO_EXTENSIONS="${TAO_EXTENSIONS:-$DEFAULT_EXT}"
+case "${TAO_GUEST_ACCESS:-off}" in on) GUEST_BOOL=true ;; off) GUEST_BOOL=false ;; *) echo "TAO_GUEST_ACCESS must be on or off" >&2; exit 1 ;; esac
 MAX_REPLICAS="${MAX_REPLICAS:-3}"
 MYSQL_SKU="${MYSQL_SKU:-Standard_B1ms}"
 
@@ -66,14 +68,14 @@ echo "==> Using image tao:${IMAGE_TAG}"
 
 echo "==> Deploying infrastructure"
 az deployment group create -g "$RG" -n tao -f infra/main.bicep -o none \
-  -p prefix="$PREFIX" location="$LOCATION" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" \
+  -p prefix="$PREFIX" location="$LOCATION" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" taoGuestAccess="$GUEST_BOOL" \
      mysqlAdminPassword="$MYSQL_ADMIN_PASSWORD" taoAdminPassword="$TAO_ADMIN_PASSWORD"
 
 out() { az deployment group show -g "$RG" -n tao --query "properties.outputs.$1.value" -o tsv; }
 TAO_URL="$(out taoUrl)"
 JOB="$(out installJobName)"
 
-echo "==> Running install job ${JOB} (no-op if TAO is already installed)"
+echo "==> Running install job ${JOB} (installs TAO if needed, applies guest access setting)"
 EXEC="$(az containerapp job start -g "$RG" -n "$JOB" --query name -o tsv)"
 while :; do
   STATUS="$(az containerapp job execution show -g "$RG" -n "$JOB" \

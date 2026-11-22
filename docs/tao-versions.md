@@ -47,6 +47,9 @@ Test any other version locally first (see [local-testing.md](local-testing.md)).
   `npm ci` fails without GitHub SSH keys. The build falls back to
   `npm install --legacy-peer-deps`, which uses the exact versions in `package.json`. In 2026.11 the lock
   files are clean and plain `npm ci` works. Node is removed from the final image.
+* **Translation bundles** (`tao/views/locales/*/messages.json`) are generated at build time with TAO's
+  `GenerateTranslationBundles.php`. The login page needs them, and the installer's copies would stay in
+  the install job's container.
 * **MathJax** (maths formulas in items) is not bundled; TAO doesn't ship it for licensing reasons. To add
   it, run `taoQtiItem/scripts/installMathJax.sh` in the Dockerfile.
 * **`mcrypt` and `soap`** are not installed: nothing in TAO's dependency tree requires them.

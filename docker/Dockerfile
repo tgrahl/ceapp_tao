@@ -58,6 +58,12 @@ RUN rm -rf /var/www/html/* \
       || exit 1; \
     done \
  && test -f tao/views/node_modules/@oat-sa/tao-core-libs/dist/select2.js \
+ # Client-side translation bundles (tao/views/locales/<lang>/messages.json). The installer writes
+ # them into the code tree, which isn't shared between containers in Azure (the install runs in
+ # a separate job). Without them the login page renders no login form. Generate them here, with
+ # TAO's tool meant for exactly this, so every container has them.
+ && php tao/scripts/tools/GenerateTranslationBundles.php -p /var/www/html \
+ && test -f tao/views/locales/en-US/messages.json \
  && npm cache clean --force \
  && apt-get purge -y --auto-remove nodejs npm \
  && mkdir -p config data \

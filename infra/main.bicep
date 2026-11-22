@@ -37,6 +37,9 @@ param taoAdminPassword string
 @description('Comma-separated TAO extensions for the install job. TAO >= 2026.x needs taoMediaManager in addition to taoCe.')
 param taoExtensions string = 'taoCe'
 
+@description('Show the "Guest access" link on the login page and allow anonymous guest deliveries. Applied by the install job on every deployment.')
+param taoGuestAccess bool = false
+
 @description('Maximum replicas under load. Minimum is always 0 (scale to zero).')
 @minValue(1)
 @maxValue(10)
@@ -392,6 +395,7 @@ resource installJob 'Microsoft.App/jobs@2025-01-01' = {
             { name: 'TAO_ADMIN_USER', value: taoAdminUser }
             { name: 'TAO_ADMIN_PASSWORD', secretRef: 'tao-admin-password' }
             { name: 'TAO_EXTENSIONS', value: taoExtensions }
+            { name: 'TAO_GUEST_ACCESS', value: taoGuestAccess ? 'on' : 'off' }
           ]
         }
       ]
