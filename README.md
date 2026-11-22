@@ -35,11 +35,22 @@ PHP_VERSION=8.3 TAO_COMMUNITY_VERSION=2026.11 ./scripts/deploy.sh
 
 Without the two version variables, the known-good TAO 2022.11.6 on PHP 8.1 is used.
 
+**Single VPS** (Ubuntu 24.04, as root), see [docs/vps-deployment.md](docs/vps-deployment.md):
+
+```bash
+git clone https://github.com/tgrahl/ceapp_tao.git /opt/tao && cd /opt/tao
+```
+
+```bash
+./scripts/vps-setup.sh && ./scripts/vps-configure.sh tao.yourschool.co.za && ./scripts/vps-deploy.sh
+```
+
 ## Documentation
 
 | Document | Contents |
 |---|---|
 | [docs/local-testing.md](docs/local-testing.md) | Run and test TAO on your machine; reset; troubleshooting |
+| [docs/vps-deployment.md](docs/vps-deployment.md) | Single VPS (e.g. in South Africa): TAO + MySQL + automatic HTTPS, backups, restore |
 | [docs/azure-deployment.md](docs/azure-deployment.md) | Step-by-step Azure deployment, autoscaling settings, updates, operations, backups |
 | [docs/hosting-options.md](docs/hosting-options.md) | Costs; cheaper alternatives; database on the same machine |
 | [docs/tao-versions.md](docs/tao-versions.md) | Where to find TAO versions, which to choose, what has been tested |
@@ -53,7 +64,9 @@ docker/php.ini           PHP sessions on the data share, opcache, upload limits
 docker/tao-install.sh    Idempotent CLI install (Container Apps job and local `install` service)
 docker-compose.yml       Local stack: TAO + MySQL 8.0
 infra/main.bicep         Azure: VNet, MySQL, Storage/Files, Container Apps environment, app, install job
-scripts/deploy.sh        Build in ACR, deploy Bicep, run the install job
+scripts/deploy.sh        Azure: build in ACR, deploy Bicep, run the install job
+scripts/vps-*.sh         VPS: setup, configure, deploy, backup, restore
+vps/                     VPS: docker-compose.yml (TAO + MySQL 8.4 + Caddy), Caddyfile
 ```
 
 ## Status

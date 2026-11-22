@@ -66,13 +66,12 @@ disk. On a single Linux VM:
   `az vm start`, or on a schedule. A stopped (deallocated) VM costs only its disk. There's no automatic
   start when a user visits, so someone must start it.
 
-Rough steps (not scripted in this repo yet):
-1. Create an Ubuntu 24.04 VM (B2s recommended for TAO), and open ports 80 and 443.
-2. Install Docker Engine and the Compose plugin.
-3. Clone this repository. Change all passwords in `docker-compose.yml`, and set `TAO_URL` to the public
-   `https://` address.
-4. Add a reverse proxy with HTTPS in front of port 8080.
-5. Run `docker compose up -d --build`, then `docker compose run --rm install`.
+Scripted in this repo: see [vps-deployment.md](vps-deployment.md). It uses a production compose setup with
+Caddy for HTTPS, MySQL 8.4 on the local disk, nightly backups and a restore script. Outline:
+1. Order a VPS with Ubuntu 24.04 (e.g. a South African provider; 4 vCPU / 8 GB for exams).
+2. `./scripts/vps-setup.sh`: Docker, firewall, automatic updates, swap, nightly backup.
+3. `./scripts/vps-configure.sh <domain-or-ip>`: creates `vps/.env` with random passwords.
+4. `./scripts/vps-deploy.sh`: builds, installs and starts TAO behind Caddy (automatic HTTPS for a domain).
 
 ## C. Container Apps with the database in the same container — why not
 

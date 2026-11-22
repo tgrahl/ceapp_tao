@@ -44,6 +44,31 @@ fi
 runuser -u www-data -- php /usr/local/bin/tao-sync-db-config.php
 runuser -u www-data -- php /usr/local/bin/tao-sync-db-config.php --check
 
+# Web address (opt-in, used by the VPS setup): keep ROOT_URL in config/generis.conf.php equal to
+# TAO_URL, so the address can change after install (e.g. from the IP to a domain). Only ROOT_URL
+# changes; LOCAL_NAMESPACE (TAO_NAMESPACE) is a permanent ID inside the data and is never touched.
+if [ "${TAO_SYNC_ROOT_URL:-no}" = "yes" ]; then
+  : "${TAO_URL:?}"
+  case "$TAO_URL" in
+    http://*|https://*) ;;
+    *) echo "TAO_URL must start with http:// or https:// (got '${TAO_URL}')" >&2; exit 1 ;;
+  esac
+  case "$TAO_URL" in
+    *"'"*|*"#"*|*"\\"*|*" "*) echo "TAO_URL contains unsupported characters" >&2; exit 1 ;;
+  esac
+  NEW_ROOT="${TAO_URL%/}/"
+  CUR_ROOT="$(sed -n "s/^define('ROOT_URL', *'\([^']*\)');.*/\1/p" config/generis.conf.php)"
+  if [ -z "$CUR_ROOT" ]; then
+    echo "Could not find ROOT_URL in config/generis.conf.php" >&2; exit 1
+  elif [ "$CUR_ROOT" != "$NEW_ROOT" ]; then
+    sed -i "s#^define('ROOT_URL', *'[^']*');#define('ROOT_URL','${NEW_ROOT}');#" config/generis.conf.php
+    chown www-data:www-data config/generis.conf.php 2>/dev/null || true
+    echo "Updated TAO web address: ${CUR_ROOT} -> ${NEW_ROOT}"
+  else
+    echo "TAO web address is ${NEW_ROOT}"
+  fi
+fi
+
 if [ "${TAO_RESET_ADMIN_PASSWORD:-no}" = "yes" ]; then
   : "${TAO_ADMIN_PASSWORD:?}"
   runuser -u www-data -- php /usr/local/bin/tao-reset-admin-password.php

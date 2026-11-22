@@ -1,0 +1,11 @@
+# Caddy in front of TAO. TAO_SITE comes from vps/.env:
+#   tao.example.co.za  -> HTTPS with an automatic Let's Encrypt certificate (DNS must point here)
+#   :80                -> plain HTTP on the server's IP address (no certificate possible for a bare IP)
+{$TAO_SITE} {
+	encode zstd gzip
+	reverse_proxy tao:8080
+	log {
+		output stdout
+		format console
+	}
+}

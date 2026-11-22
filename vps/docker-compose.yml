@@ -1,0 +1,93 @@
+# TAO on a single VPS: TAO (nginx + php-fpm), MySQL 8.4 on local disk, Caddy for HTTPS.
+# Managed by scripts/vps-deploy.sh; settings in vps/.env (create with scripts/vps-configure.sh).
+# See docs/vps-deployment.md.
+#
+# Only Caddy publishes ports (80/443). TAO and MySQL are reachable only inside this compose network.
+name: tao
+
+services:
+  tao:
+    build:
+      context: ../docker
+      args:
+        PHP_VERSION: ${PHP_VERSION:-8.3}
+        TAO_COMMUNITY_VERSION: ${TAO_COMMUNITY_VERSION:-2026.11}
+    image: tao-vps:latest
+    volumes:
+      - config:/var/www/html/config
+      - data:/var/www/html/data
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+  # One-off: installs TAO if needed, then applies settings (DB password, URL, logging, guest access).
+  # Run by scripts/vps-deploy.sh: docker compose run --rm install
+  install:
+    image: tao-vps:latest
+    profiles: [ install ]
+    command: [ "/usr/local/bin/tao-install.sh" ]
+    environment:
+      TAO_DB_HOST: db
+      TAO_DB_NAME: tao
+      TAO_DB_USER: tao
+      TAO_DB_PASSWORD: ${DB_PASSWORD:?set in vps/.env}
+      TAO_URL: ${TAO_URL:?set in vps/.env}
+      TAO_SYNC_ROOT_URL: "yes"
+      TAO_NAMESPACE: ${TAO_NAMESPACE:?set in vps/.env}
+      TAO_ADMIN_USER: ${TAO_ADMIN_USER:-admin}
+      TAO_ADMIN_PASSWORD: ${TAO_ADMIN_PASSWORD:?set in vps/.env}
+      TAO_EXTENSIONS: ${TAO_EXTENSIONS:-taoCe,taoMediaManager}
+      TAO_GUEST_ACCESS: ${TAO_GUEST_ACCESS:-off}
+      TAO_LOG_LEVEL: ${TAO_LOG_LEVEL:-warning}
+      TAO_RESET_ADMIN_PASSWORD: ${RESET_ADMIN_PASSWORD:-no}
+    volumes:
+      - config:/var/www/html/config
+      - data:/var/www/html/data
+    depends_on:
+      db: { condition: service_healthy }
+
+  db:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL:-512M}
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set in vps/.env}
+      MYSQL_DATABASE: tao
+      MYSQL_USER: tao
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set in vps/.env}
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      # TCP on 127.0.0.1 only answers once the real server runs (not the init-time server).
+      test: [ "CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql -uroot -h127.0.0.1 -e 'SELECT 1' >/dev/null" ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      # A domain (tao.example.co.za) gets a Let's Encrypt certificate automatically;
+      # ":80" serves plain HTTP on the IP address.
+      TAO_SITE: ${TAO_SITE:?set in vps/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [ tao ]
+    restart: unless-stopped
+
+volumes:
+  config:
+  data:
+  db:
+  caddy_data:
+  caddy_config:
