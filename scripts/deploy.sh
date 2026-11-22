@@ -49,7 +49,12 @@ if ! az acr show -n "$ACR" -g "$RG" -o none 2>/dev/null; then
   az acr create -n "$ACR" -g "$RG" -l "$LOCATION" --sku Basic -o none
 fi
 
-if az acr repository show -n "$ACR" --image "tao:${IMAGE_TAG}" -o none 2>/dev/null; then
+# Look the tag up in the build history (management API, uses the normal az login).
+# `az acr repository show` would need a registry token, which Cloud Shell sometimes fails
+# to get, and then prompts for a registry password.
+BUILT="$(az acr task list-runs -r "$ACR" --top 50 \
+  --query "length([?status=='Succeeded' && outputImages[?tag=='${IMAGE_TAG}']])" -o tsv 2>/dev/null || echo 0)"
+if [ "${BUILT:-0}" -gt 0 ]; then
   echo "==> Image tao:${IMAGE_TAG} already exists in ${ACR} – skipping build"
 else
   echo "==> Building image tao:${IMAGE_TAG} in ACR (takes ~10 min)"
