@@ -4,6 +4,7 @@
 # Required:  MYSQL_ADMIN_PASSWORD, TAO_ADMIN_PASSWORD
 # Optional:  RG (rg-tao), LOCATION (swedencentral), PREFIX (tao), ACR (derived),
 #            IMAGE_TAG (timestamp), MAX_REPLICAS (3), MYSQL_SKU (Standard_B1ms)
+#            MYSQL_VERSION (8.4 for a new server; an existing server keeps its current version)
 #            PHP_VERSION (8.1) + TAO_COMMUNITY_VERSION (empty = package-tao composer.lock, TAO 2022.11.6)
 #            e.g. PHP_VERSION=8.3 TAO_COMMUNITY_VERSION=2026.11 for the current LTS
 #            TAO_EXTENSIONS (taoCe; taoCe,taoMediaManager when TAO_COMMUNITY_VERSION is set)
@@ -68,9 +69,15 @@ else
 fi
 echo "==> Using image tao:${IMAGE_TAG}"
 
+# Never change the major version of an existing server through the template (one-way, and Burstable
+# servers need care): pass its current version. Upgrades: az mysql flexible-server upgrade (see docs).
+CURRENT_MYSQL_VERSION="$(az mysql flexible-server list -g "$RG" --query "[0].version" -o tsv 2>/dev/null || true)"
+MYSQL_VERSION="${MYSQL_VERSION:-${CURRENT_MYSQL_VERSION:-8.4}}"
+echo "==> MySQL version: ${MYSQL_VERSION}${CURRENT_MYSQL_VERSION:+ (existing server)}"
+
 echo "==> Deploying infrastructure"
 az deployment group create -g "$RG" -n tao -f infra/main.bicep -o none \
-  -p prefix="$PREFIX" location="$LOCATION" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" taoGuestAccess="$GUEST_BOOL" taoLogLevel="${TAO_LOG_LEVEL:-warning}" resetAdminPassword="$( [ "${RESET_ADMIN_PASSWORD:-no}" = yes ] && echo true || echo false )" \
+  -p prefix="$PREFIX" location="$LOCATION" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" mysqlVersion="$MYSQL_VERSION" taoGuestAccess="$GUEST_BOOL" taoLogLevel="${TAO_LOG_LEVEL:-warning}" resetAdminPassword="$( [ "${RESET_ADMIN_PASSWORD:-no}" = yes ] && echo true || echo false )" \
      mysqlAdminPassword="$MYSQL_ADMIN_PASSWORD" taoAdminPassword="$TAO_ADMIN_PASSWORD"
 
 out() { az deployment group show -g "$RG" -n tao --query "properties.outputs.$1.value" -o tsv; }

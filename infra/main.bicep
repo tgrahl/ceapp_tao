@@ -70,6 +70,10 @@ param mysqlSku string = 'Standard_B1ms'
 @allowed([ 'Burstable', 'GeneralPurpose', 'MemoryOptimized' ])
 param mysqlTier string = 'Burstable'
 
+@description('MySQL major version: 8.4 (LTS) for new servers. For an existing server this must equal its current version (deploy.sh passes it); upgrade with `az mysql flexible-server upgrade`, never by changing this, since upgrades are one-way.')
+@allowed([ '8.0.21', '8.4' ])
+param mysqlVersion string = '8.4'
+
 param mysqlStorageGB int = 20
 
 @description('Quota (GiB) of the TAO data file share.')
@@ -139,13 +143,14 @@ resource mysqlDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@202
 }
 
 // ---------------------------------------------------------------- database
-resource mysql 'Microsoft.DBforMySQL/flexibleServers@2023-12-30' = {
+// 2025-06-01-preview: the first API version whose ServerVersion accepts '8.4' (2024-12-30 lists only 5.7 and 8.0.21).
+resource mysql 'Microsoft.DBforMySQL/flexibleServers@2025-06-01-preview' = {
   name: '${prefix}-mysql-${suffix}'
   location: location
   tags: tags
   sku: { name: mysqlSku, tier: mysqlTier }
   properties: {
-    version: '8.0.21'
+    version: mysqlVersion
     administratorLogin: mysqlAdminUser
     administratorLoginPassword: mysqlAdminPassword
     storage: { storageSizeGB: mysqlStorageGB, autoGrow: 'Enabled' }

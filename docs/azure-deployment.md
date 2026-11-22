@@ -253,6 +253,46 @@ without it (debug is verbose and fills Log Analytics, which is billed per GB).
 The install job's own output (install, guest access, log setup): **Container Apps jobs → `tao-install` →
 Execution history → Console logs**, or the `az containerapp job logs show` command under *Operations*.
 
+## Upgrading MySQL 8.0 → 8.4
+
+Azure ends standard support for MySQL 8.0 on **31 December 2026**; from 1 January 2027 8.0 servers incur
+extended-support charges. New deployments of this repo create **8.4** (LTS). An existing 8.0 server is
+upgraded **in place**. That's one-way (no downgrade), with a few minutes of downtime, so do it outside
+exam times.
+
+Tested locally (MySQL 8.0.46 → 8.4.13, in-place, with TAO 2026.11): data kept, install job, login, all
+back-office sections and the item editor work. TAO's database user may use the `mysql_native_password`
+login method, which plain MySQL 8.4 switches off. Azure keeps it on by default for 8.4, and TAO also
+works with the newer `caching_sha2_password` (both tested).
+
+1. Find the server name:
+   ```bash
+   MYSQL=$(az mysql flexible-server list -g rg-tao --query "[0].name" -o tsv); echo "$MYSQL"
+   ```
+2. Take an on-demand backup (automatic backups exist too; this one is labelled):
+   ```bash
+   az mysql flexible-server backup create -g rg-tao -n "$MYSQL" --backup-name before-8-4
+   ```
+3. Upgrade:
+   ```bash
+   az mysql flexible-server upgrade -g rg-tao -n "$MYSQL" --version 8.4
+   ```
+   **Burstable (B1ms):** Microsoft's docs say the upgrade temporarily moves a Burstable server to General
+   Purpose, and *doesn't move it back if the upgrade fails*. If the command refuses a Burstable server,
+   scale up first, upgrade, then scale back down (about €0.20 per hour on General Purpose):
+   ```bash
+   az mysql flexible-server update -g rg-tao -n "$MYSQL" --tier GeneralPurpose --sku-name Standard_D2ads_v5
+   ```
+   ```bash
+   az mysql flexible-server update -g rg-tao -n "$MYSQL" --tier Burstable --sku-name Standard_B1ms
+   ```
+   Either way, afterwards check the size is back to B1ms (`az mysql flexible-server show -g rg-tao -n "$MYSQL" --query sku`).
+4. Run `deploy.sh` once. It reads the server's version (now 8.4) and passes it to the template, and the
+   install job tests TAO's database connection (`Database connection OK` in its log).
+
+`deploy.sh` never changes the MySQL version of an existing server by itself; `MYSQL_VERSION` only
+matters for a new server.
+
 ## Passwords
 
 * **Database password** (`MYSQL_ADMIN_PASSWORD`): every deployment sets the MySQL admin password to this
