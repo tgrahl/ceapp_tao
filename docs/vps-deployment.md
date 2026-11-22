@@ -188,6 +188,32 @@ df -h / && docker system df
   your key works.
 * `vps/.env` contains all passwords (readable only by root). It's excluded from git.
 
+## Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| `PHP Warning: Constant ROOT_URL already defined` during the first install | Harmless; comes from TAO's installer. |
+| Browser can't reach the domain, Caddy log shows certificate errors | DNS A record doesn't point to the VPS yet, or ports 80/443 are blocked by the provider's firewall. Fix that; Caddy retries by itself. |
+| `MySQL did not become ready` | Check `logs db`. If `DB_ROOT_PASSWORD` in `vps/.env` was changed after the first start, put the original value back. |
+| "Something unexpected happened" in TAO | Look for `tao.ERROR` in `logs tao`. |
+| Build fails with "no space left on device" | `docker system prune` removes old images and build cache; check `df -h /`. |
+
+## What was tested
+
+Run in a test environment with the scripts in this repo, TAO 2026.11 / PHP 8.3 and the official `mysql:8.4`
+and `caddy:2` images. The TAO image was a stand-in with the same configs and scripts on Ubuntu 24.04's
+PHP 8.3, because Debian's package mirrors weren't reachable there:
+
+* `vps-configure.sh` (IP mode), first `vps-deploy.sh`, then through Caddy on port 80: login page with form
+  and without guest link, admin login, all back-office sections, item editor;
+* `vps-backup.sh`, then **everything wiped** (`down -v`), fresh `vps-deploy.sh`, `vps-restore.sh`: the item
+  created before the backup was back;
+* changing the address and `DB_PASSWORD` in `vps/.env` plus `vps-deploy.sh`: both applied, login at the new
+  address works, and TAO's permanent namespace is unchanged.
+
+Not tested: `vps-setup.sh` on a real Ubuntu VPS (firewall, swap, cron), Let's Encrypt with a real domain,
+rclone off-server copies, and the real image build from `docker/Dockerfile` (that build works in Azure).
+
 ## Limits compared with Azure
 
 * **One server, no failover:** if the VPS or the provider has an outage, TAO is down until it's back, or

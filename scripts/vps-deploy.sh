@@ -47,7 +47,8 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 [ -n "$ok" ] || { compose logs --tail 50 tao >&2; die "TAO did not start. See the log above (or: docker compose -f vps/docker-compose.yml logs tao)."; }
-STATUS="$(compose exec -T tao php -r '$h = @get_headers("http://127.0.0.1:8080/"); echo $h ? $h[0] : "no answer";' 2>/dev/null || true)"
+# Don't follow redirects: TAO redirects to its public address, which isn't reachable from inside.
+STATUS="$(compose exec -T tao php -r '$c = stream_context_create(["http" => ["follow_location" => 0]]); $h = @get_headers("http://127.0.0.1:8080/", false, $c); echo $h ? $h[0] : "no answer";' 2>/dev/null || true)"
 echo "    TAO start page: ${STATUS}"
 
 docker image prune -f >/dev/null 2>&1 || true
