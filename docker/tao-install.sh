@@ -37,6 +37,36 @@ else
   echo "TAO installation finished."
 fi
 
+# Logging: TAO's default config/generis/log.conf.php uses a null logger, so errors behind
+# "Something unexpected happened" are logged nowhere. Send them to stderr instead; php-fpm
+# forwards worker output to the container log (Azure: Container Apps console logs).
+LEVEL="$(echo "${TAO_LOG_LEVEL:-warning}" | tr '[:upper:]' '[:lower:]')"
+case "$LEVEL" in
+  debug|info|notice|warning|error|critical) ;;
+  *) echo "TAO_LOG_LEVEL must be debug, info, notice, warning, error or critical (got '${TAO_LOG_LEVEL}')" >&2; exit 1 ;;
+esac
+echo "Setting TAO log output: stderr, level ${LEVEL}"
+cat > config/generis/log.conf.php <<EOF
+<?php
+// Managed by docker/tao-install.sh (rewritten on every deployment): TAO log messages go to
+// the container output. Level from TAO_LOG_LEVEL (default: warning).
+return new oat\oatbox\log\LoggerService([
+    'logger' => [
+        'class' => \oat\oatbox\log\logger\TaoMonolog::class,
+        'options' => [
+            'name' => 'tao',
+            'handlers' => [
+                [
+                    'class' => \Monolog\Handler\StreamHandler::class,
+                    'options' => ['php://stderr', '${LEVEL}'],
+                ],
+            ],
+        ],
+    ],
+]);
+EOF
+chown www-data:www-data config/generis/log.conf.php 2>/dev/null || true
+
 # Guest access: the "Guest access" link on the login page, which lets anyone take deliveries
 # that allow guests. TAO's own action removes the login-page entry point and revokes the
 # anonymous role's access to the guest controller (or restores both with "on").

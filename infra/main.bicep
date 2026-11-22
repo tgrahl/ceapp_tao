@@ -40,6 +40,10 @@ param taoExtensions string = 'taoCe'
 @description('Show the "Guest access" link on the login page and allow anonymous guest deliveries. Applied by the install job on every deployment.')
 param taoGuestAccess bool = false
 
+@description('TAO log level written to the container output (Container Apps console logs). Applied by the install job on every deployment.')
+@allowed([ 'debug', 'info', 'notice', 'warning', 'error', 'critical' ])
+param taoLogLevel string = 'warning'
+
 @description('Maximum replicas under load. Minimum is always 0 (scale to zero).')
 @minValue(1)
 @maxValue(10)
@@ -396,6 +400,7 @@ resource installJob 'Microsoft.App/jobs@2025-01-01' = {
             { name: 'TAO_ADMIN_PASSWORD', secretRef: 'tao-admin-password' }
             { name: 'TAO_EXTENSIONS', value: taoExtensions }
             { name: 'TAO_GUEST_ACCESS', value: taoGuestAccess ? 'on' : 'off' }
+            { name: 'TAO_LOG_LEVEL', value: taoLogLevel }
           ]
         }
       ]

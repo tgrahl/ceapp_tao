@@ -79,6 +79,7 @@ Optional variables, set them in front of the command:
 | `TAO_EXTENSIONS` | `taoCe` (`taoCe,taoMediaManager` when a version is set) | Extensions to install |
 | `IMAGE_TAG` | timestamp | Image tag in the registry. If that tag already exists, the build is skipped. |
 | `MYSQL_SKU` | `Standard_B1ms` | Database size (see below) |
+| `TAO_LOG_LEVEL` | `warning` | TAO log level in the container output (`debug` … `critical`). Applied on every deploy. |
 | `TAO_GUEST_ACCESS` | `off` | `on` shows the "Guest access" link on the login page, so anyone can take deliveries that allow guests. Applied on every deploy. |
 
 The script takes about 20–30 minutes in total. It:
@@ -206,6 +207,38 @@ the database and the `tao-data` share, so always back up and restore both togeth
 **Custom domain:** add and bind it to the container app (`az containerapp hostname add` and
 `az containerapp hostname bind`). Then change `ROOT_URL` in `config/generis.conf.php` on the `tao-config`
 share to the new URL.
+
+## Finding errors ("Something unexpected happened")
+
+TAO shows that page when it catches an error. The details go to the container output, through a TAO
+logger the install job sets up (TAO's own default config drops all log messages). PHP crashes and nginx
+requests are there too.
+
+**Live, in the portal:** container app `tao-app` → **Monitoring → Log stream** → choose **Console**.
+Reproduce the error while it's open. A replica must be running.
+
+**Live, in Cloud Shell:**
+
+```bash
+az containerapp logs show -g rg-tao -n tao-app --type console --follow --tail 100
+```
+
+**History (2–5 minutes delay):** `tao-app` → **Monitoring → Logs**:
+
+```kusto
+ContainerAppConsoleLogs_CL
+| where ContainerAppName_s == "tao-app"
+| where Log_s has_any ("tao.ERROR", "tao.CRITICAL", "tao.WARNING", "PHP Fatal", "PHP Warning", "\" 500 ")
+| project TimeGenerated, Log_s
+| order by TimeGenerated desc
+| take 200
+```
+
+For more detail, re-run `deploy.sh` with `TAO_LOG_LEVEL=debug`, reproduce the problem, then deploy again
+without it (debug is verbose and fills Log Analytics, which is billed per GB).
+
+The install job's own output (install, guest access, log setup): **Container Apps jobs → `tao-install` →
+Execution history → Console logs**, or the `az containerapp job logs show` command under *Operations*.
 
 ## Login page and guest access
 
