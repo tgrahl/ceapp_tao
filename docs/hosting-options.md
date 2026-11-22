@@ -7,7 +7,7 @@ region with the [Azure pricing calculator](https://azure.microsoft.com/pricing/c
 
 | Option | Fixed cost / month | Autoscaling | Effort | Good for |
 |---|---|---|---|---|
-| **A. Container Apps + MySQL Flexible Server B1ms** (this repo) | ~€20–25 | yes, 0 → N | done | Production, irregular use, exam peaks |
+| **A. Container Apps + MySQL Flexible Server B1ms** (this repo) | ~€27–33 | yes, 0 → N | done | Production, irregular use, exam peaks |
 | **A′. Same, with MySQL stopped between exam periods** | ~€8–10 while stopped | yes | manual or scheduled start/stop | Use only a few weeks per term |
 | **B. One small VM with everything (docker compose)** | ~€17–40 always on; less with auto-shutdown | no | low | Small, steady use; simplest to understand |
 | **C. Container Apps with MySQL in the same container** | ~€8–10 | no (max 1 replica) | medium | Demos only — **not recommended** |
@@ -24,9 +24,20 @@ The app scales 0 → N; the database runs all the time on the smallest size.
 | Container Registry, Basic | 5 |
 | Storage account, Azure Files (pay per GB used) | 1–3 |
 | Log Analytics | < 1 when idle (pay per GB ingested) |
+| 2 × Standard static public IP (Container Apps environment on a custom VNet: one for inbound, one for outbound traffic) | ~7 |
+| Load balancer in the `ME_…` resource group (created by Container Apps) | not billed separately per Microsoft's docs (check your bill) |
+| Private DNS zone for MySQL | ~0.50 |
 | Container Apps | **0 while idle.** Each month's free grant (180,000 vCPU-seconds, 360,000 GiB-seconds, 2M requests) covers about 25 hours of one 1-vCPU/2 GiB replica (memory runs out first). Beyond that, a running replica costs roughly €0.10 per hour. |
 
+Example: the app is used ~2 hours a day (about 68 replica-hours/month, partly covered by the free
+grant) → **~€28–34/month in total**, of which ~€2 is the app itself.
+
 Ways to make it cheaper:
+* **Drop the custom VNet (−€7):** give MySQL public access with the "allow Azure services" firewall rule
+  and let Container Apps use its default managed network. The public IPs then go away. The catch is that
+  database traffic then crosses public endpoints, so it must be encrypted. TAO's installer can't set
+  TLS options, so `config/generis/persistences.conf.php` would need patching after the install to use
+  TLS. Not implemented.
 * **Stop MySQL when TAO isn't used** (holidays, between exam sessions): compute stops being billed, storage
   is still billed. Azure restarts a stopped server after 30 days. You can automate start/stop on a schedule
   with an Azure Automation runbook or a Logic App.
