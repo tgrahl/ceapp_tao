@@ -9,8 +9,16 @@ COMPOSE_FILE="${VPS_DIR}/docker-compose.yml"
 die()  { echo "ERROR: $*" >&2; exit 1; }
 info() { echo "==> $*"; }
 
+OVERRIDE_FILE="${VPS_DIR}/docker-compose.override.yml"
+
+# Optional vps/docker-compose.override.yml (not in git) for server-specific tweaks,
+# e.g. resource limits; included automatically when present.
 compose() {
-  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+  if [ -f "$OVERRIDE_FILE" ]; then
+    docker compose -f "$COMPOSE_FILE" -f "$OVERRIDE_FILE" --env-file "$ENV_FILE" "$@"
+  else
+    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+  fi
 }
 
 load_env() {

@@ -2,3 +2,4 @@
 *.local
 .DS_Store
 vps/.env
+vps/docker-compose.override.yml
