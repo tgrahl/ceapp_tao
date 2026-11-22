@@ -2,7 +2,7 @@
 # Deploys TAO to Azure Container Apps (scale to zero) and runs the one-time install.
 #
 # Required:  MYSQL_ADMIN_PASSWORD, TAO_ADMIN_PASSWORD
-# Optional:  RG (rg-tao), LOCATION (westeurope), PREFIX (tao), ACR (derived),
+# Optional:  RG (rg-tao), LOCATION (swedencentral), PREFIX (tao), ACR (derived),
 #            IMAGE_TAG (timestamp), MAX_REPLICAS (3), MYSQL_SKU (Standard_B1s)
 #            PHP_VERSION (8.1) + TAO_COMMUNITY_VERSION (empty = package-tao composer.lock, TAO 2022.11.6)
 #            e.g. PHP_VERSION=8.3 TAO_COMMUNITY_VERSION=2026.11 for the current LTS
@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 : "${TAO_ADMIN_PASSWORD:?set TAO_ADMIN_PASSWORD}"
 
 RG="${RG:-rg-tao}"
-LOCATION="${LOCATION:-westeurope}"
+LOCATION="${LOCATION:-swedencentral}"
 PREFIX="${PREFIX:-tao}"
 IMAGE_TAG="${IMAGE_TAG:-$(date -u +%Y%m%d%H%M%S)}"
 PHP_VERSION="${PHP_VERSION:-8.1}"
@@ -38,7 +38,11 @@ done
 
 az extension add --name containerapp --upgrade --only-show-errors
 
-az group create -n "$RG" -l "$LOCATION" -o none
+if RG_LOCATION="$(az group show -n "$RG" --query location -o tsv 2>/dev/null)"; then
+  echo "==> Using existing resource group ${RG} (metadata in ${RG_LOCATION}); resources go to ${LOCATION}"
+else
+  az group create -n "$RG" -l "$LOCATION" -o none
+fi
 
 if ! az acr show -n "$ACR" -g "$RG" -o none 2>/dev/null; then
   echo "==> Creating container registry ${ACR}"
@@ -52,7 +56,7 @@ az acr build -r "$ACR" -t "tao:${IMAGE_TAG}" -t "tao:latest" \
 
 echo "==> Deploying infrastructure"
 az deployment group create -g "$RG" -n tao -f infra/main.bicep -o none \
-  -p prefix="$PREFIX" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" \
+  -p prefix="$PREFIX" location="$LOCATION" acrName="$ACR" image="tao:${IMAGE_TAG}" maxReplicas="$MAX_REPLICAS" taoExtensions="$TAO_EXTENSIONS" mysqlSku="$MYSQL_SKU" \
      mysqlAdminPassword="$MYSQL_ADMIN_PASSWORD" taoAdminPassword="$TAO_ADMIN_PASSWORD"
 
 out() { az deployment group show -g "$RG" -n tao --query "properties.outputs.$1.value" -o tsv; }

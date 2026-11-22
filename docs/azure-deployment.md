@@ -73,7 +73,7 @@ Optional variables, set them in front of the command:
 | Variable | Default | Meaning |
 |---|---|---|
 | `RG` | `rg-tao` | Resource group |
-| `LOCATION` | `westeurope` | Azure region |
+| `LOCATION` | `swedencentral` | Azure region. Some regions (e.g. West Europe) refuse new resources for some subscriptions with *"The selected region is currently not accepting new customers"*; pick another region then. |
 | `PREFIX` | `tao` | Name prefix for all resources |
 | `MAX_REPLICAS` | `3` | Upper limit for autoscaling |
 | `TAO_EXTENSIONS` | `taoCe` (`taoCe,taoMediaManager` when a version is set) | Extensions to install |
