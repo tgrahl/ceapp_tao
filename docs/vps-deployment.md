@@ -195,6 +195,7 @@ df -h / && docker system df
 | `PHP Warning: Constant ROOT_URL already defined` during the first install | Harmless; comes from TAO's installer. |
 | Browser can't reach the domain, Caddy log shows certificate errors | DNS A record doesn't point to the VPS yet, or ports 80/443 are blocked by the provider's firewall. Fix that; Caddy retries by itself. |
 | `MySQL did not become ready` | Check `logs db`. If `DB_ROOT_PASSWORD` in `vps/.env` was changed after the first start, put the original value back. |
+| Importing a large test keeps one CPU core at 100% | Normal: TAO imports in one PHP process. Requests may run up to 30 minutes (`max_execution_time` in `docker/php.ini`, `fastcgi_read_timeout` in `docker/nginx.conf`); a longer import is cut off with an error or a 504. |
 | "Something unexpected happened" in TAO | Look for `tao.ERROR` in `logs tao`. |
 | Build fails with "no space left on device" | `docker system prune` removes old images and build cache; check `df -h /`. |
 

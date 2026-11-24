@@ -307,6 +307,12 @@ matters for a new server.
   ```
   Don't leave it set, or every deployment resets the password.
 
+## Long requests (large imports)
+
+PHP and nginx in the image allow requests up to 30 minutes, but Azure Container Apps' ingress ends a
+request after about 240 seconds. A very large test import can therefore fail on Azure with a timeout
+even though it would finish on a VPS. Split large packages into smaller ones, or import them on a VPS.
+
 ## Login page and guest access
 
 * **Guest access is off by default.** The install job runs TAO's `ToggleGuestAccess` action on every
