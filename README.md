@@ -53,6 +53,7 @@ git clone https://github.com/tgrahl/ceapp_tao.git /opt/tao && cd /opt/tao
 | [docs/vps-deployment.md](docs/vps-deployment.md) | Single VPS (e.g. in South Africa): TAO + MySQL + automatic HTTPS, backups, restore |
 | [docs/azure-deployment.md](docs/azure-deployment.md) | Step-by-step Azure deployment, autoscaling settings, updates, operations, backups |
 | [docs/hosting-options.md](docs/hosting-options.md) | Costs; cheaper alternatives; database on the same machine |
+| [docs/migrating-tests.md](docs/migrating-tests.md) | Move tests from an old TAO: command-line QTI export/import, what does and doesn't migrate |
 | [docs/tao-versions.md](docs/tao-versions.md) | Where to find TAO versions, which to choose, what has been tested |
 
 ## Repository layout
